@@ -1,5 +1,6 @@
 import json
 import random
+import argparse
 
 # Load flat moves and transitions from moves.json
 with open('moves.json', 'r') as f:
@@ -34,7 +35,24 @@ def generate_sequence(min_len=4, max_len=6):
         sequence.append(sequence[0])
     return sequence
 
+def focus_move(move):
+    inputs = [k for k, vals in moves_data.items() if move in vals]
+    outputs = moves_data.get(move, [])
+    combos = [[inp, move, out] for inp in inputs for out in outputs]
+    return combos
+
 if __name__ == "__main__":
-    seq = generate_sequence()
-    print("Random movement sequence:")
-    print(seq)
+    parser = argparse.ArgumentParser(description="Generate movement sequences or focus on a specific move.")
+    parser.add_argument('--focus', type=str, help="Name of the move to focus on")
+    args = parser.parse_args()
+    if args.focus:
+        combos = focus_move(args.focus)
+        print(f"Combinations for move {args.focus}:")
+        # select up to 10 random combos to display
+        selected = random.sample(combos, min(10, len(combos)))
+        for combo in selected:
+            print(combo)
+    else:
+        seq = generate_sequence()
+        print("Random movement sequence:")
+        print(seq)
