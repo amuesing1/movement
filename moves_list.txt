@@ -17,7 +17,7 @@
 "corkscrew",
 "single leg kick through",
 "whip",
-"s dobrado",
+"monkey kick",
 "spiral",
 "deep forward lunge",
 "ginja",
@@ -31,4 +31,8 @@
 "backsweep",
 "sissy squat",
 "backroll",
-"QDR"
+"QDR",
+"infinity rock",
+"cat walk",
+"jaguar",
+"spinning bridge"
