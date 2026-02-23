@@ -15,31 +15,15 @@ def parse_markdown_moves(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
     except PermissionError:
-        # Method 2: Try using AppleScript through osascript
+        # Method 2: Try using 'open' command to trigger file access
         try:
-            applescript = f'''
-            tell application "System Events"
-                set theFile to POSIX file "{file_path}"
-                set fileContent to read theFile
-                return fileContent
-            end tell
-            '''
-            result = subprocess.run(['osascript', '-e', applescript], 
-                                  capture_output=True, text=True, timeout=30)
-            if result.returncode == 0:
-                content = result.stdout.strip()
-            else:
-                raise Exception(f"AppleScript failed: {result.stderr}")
+            subprocess.run(['open', file_path], check=True, timeout=5)
+            time.sleep(2)  # Wait for file access
+            # Try direct access again
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
         except:
-            # Method 3: Try using 'open' command to trigger file access
-            try:
-                subprocess.run(['open', file_path], check=True, timeout=5)
-                time.sleep(2)  # Wait for file access
-                # Try direct access again
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-            except:
-                raise PermissionError(f"Cannot access file: {file_path}")
+            raise PermissionError(f"Cannot access file: {file_path}")
     
     # Find the ## Transitions section
     transitions_match = re.search(r'## Transitions\s*\n(.*?)(?=\n##|\Z)', content, re.DOTALL)
@@ -61,8 +45,8 @@ def parse_markdown_moves(file_path):
             current_move = line[2:].strip()
             moves_data[current_move] = []
         # Check if it's a sub-move (starts with '  - ')
-        elif line.startswith('  - ') and current_move is not None:
-            sub_move = line[4:].strip()
+        elif (line.startswith('  - ') or line.startswith('	- ')) and current_move is not None:
+            sub_move = line.lstrip()[2:].strip()
             moves_data[current_move].append(sub_move)
     
     return moves_data
@@ -111,6 +95,42 @@ def generate_focus_combinations(move):
 def format_with_arrows(sequence):
     """Format a sequence list with arrow notation"""
     return ' → '.join(sequence)
+
+def validate_transitions():
+    """Validate all transitions to ensure all referenced moves exist and no duplicates"""
+    errors = []
+    all_moves = set(moves_data.keys())
+    
+    print("Validating all transitions...")
+    
+    # Check for typos/non-existent moves
+    for move, transitions in moves_data.items():
+        for transition in transitions:
+            if transition not in all_moves:
+                errors.append(f"'{transition}' doesn't exist (referenced from '{move}')")
+    
+    # Check for duplicate moves in any section
+    for move, transitions in moves_data.items():
+        seen = set()
+        duplicates = set()
+        for transition in transitions:
+            if transition in seen:
+                duplicates.add(transition)
+            seen.add(transition)
+        
+        if duplicates:
+            for duplicate in duplicates:
+                errors.append(f"Duplicate move '{duplicate}' found in '{move}' section")
+    
+    if errors:
+        print(f"\nFound {len(errors)} transition errors:")
+        for error in errors:
+            print(f"  ERROR: {error}")
+        return False
+    else:
+        print(f"All {len(all_moves)} moves have valid transitions")
+        print(f"Checked {sum(len(transitions) for transitions in moves_data.values())} total transitions")
+        return True
 
 def write_to_movement_practice(content, section_type='sequence'):
     """Write content to Movement Practice.md file"""
@@ -177,7 +197,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate movement sequences or focus on a specific move.")
     parser.add_argument('--focus', type=str, help="Name of the move to focus on")
     parser.add_argument('--sequence', action='store_true', help="Generate only a sequence (not transitions)")
+    parser.add_argument('--validate', action='store_true', help="Validate all transitions and check for typos")
     args = parser.parse_args()
+    
+    if args.validate:
+        # Validation mode - check all transitions
+        is_valid = validate_transitions()
+        exit(0 if is_valid else 1)
     
     if args.focus:
         # Focus mode - generate transitions for a specific move
