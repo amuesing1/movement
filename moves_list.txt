@@ -35,4 +35,7 @@
 "infinity rock",
 "cat walk",
 "jaguar",
-"spinning bridge"
+"spinning bridge",
+"cat roll",
+"scythe",
+"dragon tail"
